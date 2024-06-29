@@ -1,0 +1,1003 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "id": "624f9eea-054f-47db-b28b-b7abd7a0dba7",
+   "metadata": {},
+   "source": [
+    "### Homework: Open-Source LLMs\n",
+    "___\n",
+    "In this homework, we will experiment more with Ollama."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "10986ae2-6caf-4adf-937e-72b6541dacd0",
+   "metadata": {},
+   "source": [
+    "### Q1. Running Ollama with Docker\n",
+    "___\n",
+    "Let's run ollama with Docker. We will need to execute the same command as in the lectures:"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "fad6f94f-bebe-413d-a1f6-b135578b27c8",
+   "metadata": {},
+   "source": [
+    "docker run -it \\\n",
+    "    --rm \\\n",
+    "    -v ollama:/root/.ollama \\\n",
+    "    -p 11434:11434 \\\n",
+    "    --name ollama \\\n",
+    "    ollama/ollama"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "1450ce8e-5795-44d5-a5ec-b61c023acf09",
+   "metadata": {},
+   "source": [
+    "What's the version of ollama client?\n",
+    "\n",
+    "To find out, enter the container and execute ollama with the -v flag."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "16234630-a8be-4b95-9abc-bbfd2f836b8f",
+   "metadata": {},
+   "source": [
+    "0.1.47"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "58d8c9d9-83af-431f-b02e-8b479ca920a7",
+   "metadata": {},
+   "source": [
+    "### Q2. Downloading an LLM\n",
+    "____\n",
+    "\n",
+    "We will download a smaller LLM - gemma:2b.\n",
+    "\n",
+    "Again let's enter the container and pull the model."
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "3ade5da5-4d5b-4fbc-8189-375d2216aea5",
+   "metadata": {},
+   "source": [
+    "ollama pull gemma:2b"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "65fdddca-5507-4e6f-b114-d1384511d8d7",
+   "metadata": {},
+   "source": [
+    "In docker, it saved the results into /root/.ollama\n",
+    "\n",
+    "We're interested in the metadata about this model. You can find it in models/manifests/registry.ollama.ai/library\n",
+    "\n",
+    "What's the content of the file related to gemma?"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "9788f7af-5ddd-4cc1-8466-f771019609e4",
+   "metadata": {},
+   "source": [
+    "{\"schemaVersion\":2,\"mediaType\":\"application/vnd.docker.distribution.manifest.v2+json\",\"config\":{\"mediaType\":\"applicati\n",
+    "on/vnd.docker.container.image.v1+json\",\"digest\":\"sha256:887433b89a901c156f7e6944442f3c9e57f3c55d6ed52042cbb7303aea9942\n",
+    "90\",\"size\":483},\"layers\":[{\"mediaType\":\"application/vnd.ollama.image.model\",\"digest\":\"sha256:c1864a5eb19305c40519da12c\n",
+    "c543519e48a0697ecd30e15d5ac228644957d12\",\"size\":1678447520},{\"mediaType\":\"application/vnd.ollama.image.license\",\"diges\n",
+    "t\":\"sha256:097a36493f718248845233af1d3fefe7a303f864fae13bc31a3a9704229378ca\",\"size\":8433},{\"mediaType\":\"application/vn\n",
+    "d.ollama.image.template\",\"digest\":\"sha256:109037bec39c0becc8221222ae23557559bc594290945a2c4221ab4f303b8871\",\"size\":136\n",
+    "},{\"mediaType\":\"application/vnd.ollama.image.params\",\"digest\":\"sha256:22a838ceb7fb22755a3b0ae9b4eadde629d19be1f651f73e\n",
+    "fb8c6b4e2cd0eea0\",\"size\":84}]}"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "06807d87-6484-4e40-8e30-c6bc507bc1ad",
+   "metadata": {},
+   "source": [
+    "### Q3. Running the LLM\n",
+    "---\n",
+    "Test the following prompt: \"10 * 10\".  What's the answer?"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "7b88f861-8bb1-4729-a720-427416f4bf8b",
+   "metadata": {},
+   "source": [
+    "'Sure, here is the response:\\n\\n10 * 10<sup>end_of_turn</sup>\\n\\nThis expression calculates 10 multiplied by 10<sup>end_of_turn</sup>, where end_of_turn is the variable representing the end of the number to be represented in scientific notation.'"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e64b83d6-ecb0-4a64-afd8-1ef22ed50cad",
+   "metadata": {},
+   "source": [
+    "### Q4. Downloading the weights\n",
+    "----\n",
+    "We don't want to pull the weights every time we run a docker container.  Let's do it once and have them available every time we start a container.\n",
+    "\n",
+    "First, we will need to change how we run the container.\n",
+    "\n",
+    "Instead of mapping the /root/.ollama folder to a named volume, let's map it to a local directory:"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "2fbbc71f-0aab-4d72-8407-41acb56b8c2c",
+   "metadata": {},
+   "source": [
+    "mkdir ollama_files\n",
+    "\n",
+    "docker run -it \\\n",
+    "    --rm \\\n",
+    "    -v ./ollama_files:/root/.ollama \\\n",
+    "    -p 11434:11434 \\\n",
+    "    --name ollama \\\n",
+    "    ollama/ollama"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "e3dd5be3-0d9f-4374-8e0a-6b19c4a6d315",
+   "metadata": {},
+   "source": [
+    "Now pull the model:"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "fe9af948-d302-4538-bd11-ab9a4ffbf67b",
+   "metadata": {},
+   "source": [
+    "docker exec -it ollama ollama pull gemma:2b "
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "1aa70470-d9a8-4549-9967-7bbc0a690c52",
+   "metadata": {},
+   "source": [
+    "What's the size of the ollama_files/models folder?\n",
+    "\n",
+    "* 0.6G\n",
+    "* 1.2G\n",
+    "* 1.7G\n",
+    "* 2.2G\n",
+    "\n",
+    "Hint: on linux, you can use du -h for that."
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "6559c120-c99b-40ce-bd52-f1ede47a7992",
+   "metadata": {},
+   "source": [
+    "1.6G    ./ollama_files/models"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "61a2e633-5ce2-48dd-ae2f-67687eb50f69",
+   "metadata": {},
+   "source": [
+    "1.7G is the closest"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "c0684f07-1860-47cc-a70f-cd61f7080da5",
+   "metadata": {},
+   "source": [
+    "### Q5. Adding the weights\n",
+    "---\n",
+    "Let's now stop the container and add the weights to a new image\n",
+    "\n",
+    "For that, let's create a Dockerfile:"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "100ed8c4-a09b-4bc2-b3b4-7c3e46f73045",
+   "metadata": {},
+   "source": [
+    "FROM ollama/ollama\n",
+    "\n",
+    "COPY ..."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "7f436059-938d-4afc-800b-e42adc7160e7",
+   "metadata": {},
+   "source": [
+    "What do you put after COPY?"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "7e9461c1-11d2-4ef7-9ce9-bafb33a2ac37",
+   "metadata": {},
+   "source": [
+    "COPY ./ollama_files/ /root/.ollama"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "cc3cfdc1-74af-4d2b-b8cd-d5fef23122b5",
+   "metadata": {},
+   "source": [
+    "### Q6. Serving it\n",
+    "---\n",
+    "Let's build it:"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "8f18acd6-38b9-4cdc-825e-a06b9bcc244a",
+   "metadata": {},
+   "source": [
+    "docker build -t ollama-gemma2b ."
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "7572eb94-d66b-4292-a4a1-40f469c88cce",
+   "metadata": {},
+   "source": [
+    "And run it:"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "3916bcfd-e8cf-47f8-a204-447825d5bbd4",
+   "metadata": {},
+   "source": [
+    "docker run -it --rm -p 11434:11434 ollama-gemma2b"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "92677f5e-c43f-4063-9d29-054f3034d323",
+   "metadata": {},
+   "source": [
+    "We can connect to it using the OpenAI client"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "34e45cb1-91be-455f-b60a-68d0d2a48f4c",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "#!pip install ollama"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "12d50bb1-9d58-4c5e-8cd0-6436da30d83b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import ollama\n",
+    "import tiktoken\n",
+    "from openai import OpenAI"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "3e3583aa-1b91-4c98-a920-b6b59ca762a5",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "client = OpenAI(\n",
+    "    base_url='http://localhost:11434/v1/',\n",
+    "    api_key='ollama',\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "ae14b665-b0f2-4e3f-b72f-cdd9d478ec93",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "encoding = tiktoken.encoding_for_model(\"gpt-4o\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "fd445131-d722-4756-b512-84ea18ccc2a0",
+   "metadata": {},
+   "source": [
+    "Let's test it with the following prompt:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "57a96d30-5eb8-416a-a308-bc9510671c7b",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "prompt = \"What's the formula for energy?\""
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "c5557bf4-5a5a-4415-bb71-1eafe130310d",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "6"
+      ]
+     },
+     "execution_count": 5,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "len(encoding.encode(prompt))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "7395c8fd-1dbc-41a1-a743-b4b9684a4d52",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Sure. The formula for energy is:\n",
+      "\n",
+      "**E = W**\n",
+      "\n",
+      "where:\n",
+      "\n",
+      "* **E** is energy in joules (J)\n",
+      "* **W** is work done in joules (J)\n"
+     ]
+    }
+   ],
+   "source": [
+    "response = ollama.generate(model='gemma:2b', prompt=prompt)\n",
+    "print(response['response'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "954046de-bd55-4a9e-b32c-3e20be68fb6a",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "40"
+      ]
+     },
+     "execution_count": 7,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "len(encoding.encode(response['response']))"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "d7320f66-7b3a-48d3-bb8c-e5cf228f812c",
+   "metadata": {},
+   "source": [
+    "Also, to make results reproducible, set the temperature parameter to 0:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "8bb6c0d3-d588-4312-9938-ef7d703162d4",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Sure, here's the formula for energy:\n",
+      "\n",
+      "**E = K + U**\n",
+      "\n",
+      "Where:\n",
+      "\n",
+      "* **E** is the energy in joules (J)\n",
+      "* **K** is the kinetic energy in joules (J)\n",
+      "* **U** is the potential energy in joules (J)\n",
+      "\n",
+      "**Kinetic energy (K)** is the energy an object possesses when it moves or is in motion. It is calculated as half the product of an object's mass (m) and its velocity (v) squared:\n",
+      "\n",
+      "**K = 1/2 * m * v^2**\n",
+      "\n",
+      "**Potential energy (U)** is the energy an object possesses when it is in a position or has a specific configuration. It is calculated as the product of an object's mass and the gravitational constant (g) multiplied by the height or distance of the object from a reference point.\n",
+      "\n",
+      "**Gravitational potential energy (U)** is given by the formula:\n",
+      "\n",
+      "**U = mgh**\n",
+      "\n",
+      "Where:\n",
+      "\n",
+      "* **m** is the mass of the object in kilograms (kg)\n",
+      "* **g** is the acceleration due to gravity in meters per second squared (m/s^2)\n",
+      "* **h** is the height or distance of the object in meters (m)\n",
+      "\n",
+      "The formula for energy can be used to calculate the total energy of an object, the energy of a specific part of an object, or the change in energy of an object over time.\n"
+     ]
+    }
+   ],
+   "source": [
+    "response = ollama.generate(model='gemma:2b', prompt=prompt, options=dict(temperature=0))\n",
+    "print(response['response'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "5aeef77f-737d-432c-99c5-844b9acaca51",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "283"
+      ]
+     },
+     "execution_count": 9,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "len(encoding.encode(response['response']))"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "5c31f61f-9577-4d9a-90ce-1e5bb4b54fa3",
+   "metadata": {},
+   "source": [
+    "response = client.chat.completions.create(\n",
+    "    model='ollama-gemma:2b',\n",
+    "    prompt=prompt,\n",
+    "    temperature=0.0\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "7b08ae5d-6dba-4822-ae97-76b7d7fb05d5",
+   "metadata": {},
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Sure, here's the formula for energy:\n",
+      "\n",
+      "**E = K + U**\n",
+      "\n",
+      "Where:\n",
+      "\n",
+      "* **E** is the energy in joules (J)\n",
+      "* **K** is the kinetic energy in joules (J)\n",
+      "* **U** is the potential energy in joules (J)\n",
+      "\n",
+      "**Kinetic energy (K)** is the energy an object possesses when it moves or is in motion. It is calculated as half the product of an object's mass (m) and its velocity (v) squared:\n",
+      "\n",
+      "**K = 1/2 * m * v^2**\n",
+      "\n",
+      "**Potential energy (U)** is the energy an object possesses when it is in a position or has a specific configuration. It is calculated as the product of an object's mass and the gravitational constant (g) multiplied by the height or distance of the object from a reference point.\n",
+      "\n",
+      "**Gravitational potential energy (U)** is given by the formula:\n",
+      "\n",
+      "**U = mgh**\n",
+      "\n",
+      "Where:\n",
+      "\n",
+      "* **m** is the mass of the object in kilograms (kg)\n",
+      "* **g** is the acceleration due to gravity in meters per second squared (m/s^2)\n",
+      "* **h** is the height or distance of the object in meters (m)\n",
+      "\n",
+      "The formula for energy can be used to calculate the total energy of an object, the energy of a specific part of an object, or the change in energy of an object over time.\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(response['response'])"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "9f6185c1-fde1-4368-9d20-9b468c899da4",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "283"
+      ]
+     },
+     "execution_count": 11,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "len(encoding.encode(response['response']))"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "5f458894-2c8b-40af-8032-61687973f0c8",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "{'model': 'gemma:2b',\n",
+       " 'created_at': '2024-06-29T20:38:45.141750116Z',\n",
+       " 'response': \"Sure, here's the formula for energy:\\n\\n**E = K + U**\\n\\nWhere:\\n\\n* **E** is the energy in joules (J)\\n* **K** is the kinetic energy in joules (J)\\n* **U** is the potential energy in joules (J)\\n\\n**Kinetic energy (K)** is the energy an object possesses when it moves or is in motion. It is calculated as half the product of an object's mass (m) and its velocity (v) squared:\\n\\n**K = 1/2 * m * v^2**\\n\\n**Potential energy (U)** is the energy an object possesses when it is in a position or has a specific configuration. It is calculated as the product of an object's mass and the gravitational constant (g) multiplied by the height or distance of the object from a reference point.\\n\\n**Gravitational potential energy (U)** is given by the formula:\\n\\n**U = mgh**\\n\\nWhere:\\n\\n* **m** is the mass of the object in kilograms (kg)\\n* **g** is the acceleration due to gravity in meters per second squared (m/s^2)\\n* **h** is the height or distance of the object in meters (m)\\n\\nThe formula for energy can be used to calculate the total energy of an object, the energy of a specific part of an object, or the change in energy of an object over time.\",\n",
+       " 'done': True,\n",
+       " 'done_reason': 'stop',\n",
+       " 'context': [968,\n",
+       "  2997,\n",
+       "  235298,\n",
+       "  559,\n",
+       "  235298,\n",
+       "  15508,\n",
+       "  235313,\n",
+       "  1645,\n",
+       "  108,\n",
+       "  1841,\n",
+       "  235303,\n",
+       "  235256,\n",
+       "  573,\n",
+       "  10513,\n",
+       "  604,\n",
+       "  4134,\n",
+       "  181537,\n",
+       "  615,\n",
+       "  235298,\n",
+       "  559,\n",
+       "  235298,\n",
+       "  15508,\n",
+       "  235313,\n",
+       "  108,\n",
+       "  235322,\n",
+       "  2997,\n",
+       "  235298,\n",
+       "  559,\n",
+       "  235298,\n",
+       "  15508,\n",
+       "  235313,\n",
+       "  2516,\n",
+       "  108,\n",
+       "  21404,\n",
+       "  235269,\n",
+       "  1517,\n",
+       "  235303,\n",
+       "  235256,\n",
+       "  573,\n",
+       "  10513,\n",
+       "  604,\n",
+       "  4134,\n",
+       "  235292,\n",
+       "  109,\n",
+       "  688,\n",
+       "  235291,\n",
+       "  589,\n",
+       "  747,\n",
+       "  963,\n",
+       "  752,\n",
+       "  688,\n",
+       "  109,\n",
+       "  6006,\n",
+       "  235292,\n",
+       "  109,\n",
+       "  235287,\n",
+       "  5231,\n",
+       "  235291,\n",
+       "  688,\n",
+       "  603,\n",
+       "  573,\n",
+       "  4134,\n",
+       "  575,\n",
+       "  12808,\n",
+       "  982,\n",
+       "  591,\n",
+       "  235338,\n",
+       "  235275,\n",
+       "  108,\n",
+       "  235287,\n",
+       "  5231,\n",
+       "  235333,\n",
+       "  688,\n",
+       "  603,\n",
+       "  573,\n",
+       "  45517,\n",
+       "  4134,\n",
+       "  575,\n",
+       "  12808,\n",
+       "  982,\n",
+       "  591,\n",
+       "  235338,\n",
+       "  235275,\n",
+       "  108,\n",
+       "  235287,\n",
+       "  5231,\n",
+       "  235327,\n",
+       "  688,\n",
+       "  603,\n",
+       "  573,\n",
+       "  5736,\n",
+       "  4134,\n",
+       "  575,\n",
+       "  12808,\n",
+       "  982,\n",
+       "  591,\n",
+       "  235338,\n",
+       "  235275,\n",
+       "  109,\n",
+       "  688,\n",
+       "  157488,\n",
+       "  4134,\n",
+       "  591,\n",
+       "  235333,\n",
+       "  77056,\n",
+       "  603,\n",
+       "  573,\n",
+       "  4134,\n",
+       "  671,\n",
+       "  4018,\n",
+       "  53043,\n",
+       "  1185,\n",
+       "  665,\n",
+       "  14574,\n",
+       "  689,\n",
+       "  603,\n",
+       "  575,\n",
+       "  8252,\n",
+       "  235265,\n",
+       "  1165,\n",
+       "  603,\n",
+       "  11985,\n",
+       "  685,\n",
+       "  3933,\n",
+       "  573,\n",
+       "  3225,\n",
+       "  576,\n",
+       "  671,\n",
+       "  4018,\n",
+       "  235303,\n",
+       "  235256,\n",
+       "  5182,\n",
+       "  591,\n",
+       "  235262,\n",
+       "  235275,\n",
+       "  578,\n",
+       "  1277,\n",
+       "  13892,\n",
+       "  591,\n",
+       "  235272,\n",
+       "  235275,\n",
+       "  43858,\n",
+       "  235292,\n",
+       "  109,\n",
+       "  688,\n",
+       "  235333,\n",
+       "  589,\n",
+       "  235248,\n",
+       "  235274,\n",
+       "  235283,\n",
+       "  235284,\n",
+       "  649,\n",
+       "  519,\n",
+       "  649,\n",
+       "  593,\n",
+       "  235393,\n",
+       "  235284,\n",
+       "  688,\n",
+       "  109,\n",
+       "  688,\n",
+       "  46472,\n",
+       "  4134,\n",
+       "  591,\n",
+       "  235327,\n",
+       "  77056,\n",
+       "  603,\n",
+       "  573,\n",
+       "  4134,\n",
+       "  671,\n",
+       "  4018,\n",
+       "  53043,\n",
+       "  1185,\n",
+       "  665,\n",
+       "  603,\n",
+       "  575,\n",
+       "  476,\n",
+       "  3668,\n",
+       "  689,\n",
+       "  919,\n",
+       "  476,\n",
+       "  3724,\n",
+       "  12199,\n",
+       "  235265,\n",
+       "  1165,\n",
+       "  603,\n",
+       "  11985,\n",
+       "  685,\n",
+       "  573,\n",
+       "  3225,\n",
+       "  576,\n",
+       "  671,\n",
+       "  4018,\n",
+       "  235303,\n",
+       "  235256,\n",
+       "  5182,\n",
+       "  578,\n",
+       "  573,\n",
+       "  70876,\n",
+       "  6221,\n",
+       "  591,\n",
+       "  235264,\n",
+       "  235275,\n",
+       "  54908,\n",
+       "  731,\n",
+       "  573,\n",
+       "  5721,\n",
+       "  689,\n",
+       "  6075,\n",
+       "  576,\n",
+       "  573,\n",
+       "  4018,\n",
+       "  774,\n",
+       "  476,\n",
+       "  6203,\n",
+       "  2377,\n",
+       "  235265,\n",
+       "  109,\n",
+       "  688,\n",
+       "  5287,\n",
+       "  47965,\n",
+       "  5736,\n",
+       "  4134,\n",
+       "  591,\n",
+       "  235327,\n",
+       "  77056,\n",
+       "  603,\n",
+       "  2764,\n",
+       "  731,\n",
+       "  573,\n",
+       "  10513,\n",
+       "  235292,\n",
+       "  109,\n",
+       "  688,\n",
+       "  235327,\n",
+       "  589,\n",
+       "  519,\n",
+       "  628,\n",
+       "  688,\n",
+       "  109,\n",
+       "  6006,\n",
+       "  235292,\n",
+       "  109,\n",
+       "  235287,\n",
+       "  5231,\n",
+       "  235262,\n",
+       "  688,\n",
+       "  603,\n",
+       "  573,\n",
+       "  5182,\n",
+       "  576,\n",
+       "  573,\n",
+       "  4018,\n",
+       "  575,\n",
+       "  97063,\n",
+       "  591,\n",
+       "  6482,\n",
+       "  235275,\n",
+       "  108,\n",
+       "  235287,\n",
+       "  5231,\n",
+       "  235264,\n",
+       "  688,\n",
+       "  603,\n",
+       "  573,\n",
+       "  30809,\n",
+       "  3402,\n",
+       "  577,\n",
+       "  23286,\n",
+       "  575,\n",
+       "  18678,\n",
+       "  842,\n",
+       "  2257,\n",
+       "  43858,\n",
+       "  591,\n",
+       "  235262,\n",
+       "  235283,\n",
+       "  235256,\n",
+       "  235393,\n",
+       "  235284,\n",
+       "  235275,\n",
+       "  108,\n",
+       "  235287,\n",
+       "  5231,\n",
+       "  235259,\n",
+       "  688,\n",
+       "  603,\n",
+       "  573,\n",
+       "  5721,\n",
+       "  689,\n",
+       "  6075,\n",
+       "  576,\n",
+       "  573,\n",
+       "  4018,\n",
+       "  575,\n",
+       "  18678,\n",
+       "  591,\n",
+       "  235262,\n",
+       "  235275,\n",
+       "  109,\n",
+       "  651,\n",
+       "  10513,\n",
+       "  604,\n",
+       "  4134,\n",
+       "  798,\n",
+       "  614,\n",
+       "  1671,\n",
+       "  577,\n",
+       "  13988,\n",
+       "  573,\n",
+       "  3051,\n",
+       "  4134,\n",
+       "  576,\n",
+       "  671,\n",
+       "  4018,\n",
+       "  235269,\n",
+       "  573,\n",
+       "  4134,\n",
+       "  576,\n",
+       "  476,\n",
+       "  3724,\n",
+       "  1702,\n",
+       "  576,\n",
+       "  671,\n",
+       "  4018,\n",
+       "  235269,\n",
+       "  689,\n",
+       "  573,\n",
+       "  2669,\n",
+       "  575,\n",
+       "  4134,\n",
+       "  576,\n",
+       "  671,\n",
+       "  4018,\n",
+       "  1163,\n",
+       "  1069,\n",
+       "  35606,\n",
+       "  615,\n",
+       "  235298,\n",
+       "  559,\n",
+       "  235298,\n",
+       "  15508,\n",
+       "  235313,\n",
+       "  108],\n",
+       " 'total_duration': 56733904517,\n",
+       " 'load_duration': 41355109,\n",
+       " 'prompt_eval_duration': 181827000,\n",
+       " 'eval_count': 304,\n",
+       " 'eval_duration': 56464798000}"
+      ]
+     },
+     "execution_count": 13,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "response"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 17,
+   "id": "04fa0509-08a2-4206-b618-37d5e2411060",
+   "metadata": {},
+   "outputs": [
+    {
+     "data": {
+      "text/plain": [
+       "304"
+      ]
+     },
+     "execution_count": 17,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "response['eval_count']"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "32545580-3edb-447c-8ea6-2f8277edaf52",
+   "metadata": {},
+   "source": [
+    "How many completion tokens did you get in response?\n",
+    "\n",
+    "* 304\n",
+    "* 604\n",
+    "* 904\n",
+    "* 1204"
+   ]
+  },
+  {
+   "cell_type": "raw",
+   "id": "6d3167fd-9ff8-4f73-83e9-8b9cc1e26df3",
+   "metadata": {},
+   "source": [
+    "304 completion tokens in the response."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "7325382f-db73-43cb-a686-e18d07a0918f",
+   "metadata": {},
+   "outputs": [],
+   "source": []
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.10.13"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
