@@ -12,6 +12,7 @@ tqdm = "*"
 openai = "*"
 tiktoken = "*"
 elasticsearch = "*"
+ollama = "*"
 
 [dev-packages]
 
